@@ -11,6 +11,7 @@
             box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
             font-family: Arial, sans-serif;
+            touch-action: manipulation;
         }
 
         body {
@@ -20,6 +21,8 @@
             align-items: center;
             min-height: 100vh;
             padding: 10px;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         .calculator {
@@ -67,17 +70,20 @@
 
         .btn {
             border: none;
-            padding: 20px;
+            padding: 25px 10px;
             font-size: 24px;
             background: white;
             cursor: pointer;
             outline: none;
             transition: background 0.1s;
             user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            min-height: 70px;
         }
 
         .btn:active {
-            background: #f5f5f5;
+            background: #f5f5f5 !important;
         }
 
         .operator {
@@ -86,7 +92,7 @@
         }
 
         .operator:active {
-            background: #f0f0f0;
+            background: #f0f0f0 !important;
         }
 
         .equals {
@@ -95,7 +101,7 @@
         }
 
         .equals:active {
-            background: #e68a00;
+            background: #e68a00 !important;
         }
 
         .clear {
@@ -123,8 +129,9 @@
             }
 
             .btn {
-                padding: 22px 10px;
+                padding: 22px 5px;
                 font-size: 22px;
+                min-height: 65px;
             }
         }
 
@@ -134,8 +141,9 @@
             }
 
             .btn {
-                padding: 20px 8px;
+                padding: 20px 5px;
                 font-size: 20px;
+                min-height: 60px;
             }
         }
 
@@ -168,6 +176,25 @@
             .equals {
                 grid-column: span 1;
             }
+
+            .btn {
+                padding: 15px 5px;
+                min-height: auto;
+            }
+        }
+
+        /* Стили для активного состояния */
+        .btn.active {
+            background: #e0e0e0 !important;
+        }
+
+        .operator.active {
+            background: #ff9500 !important;
+            color: white !important;
+        }
+
+        .equals.active {
+            background: #ffaa33 !important;
         }
     </style>
 </head>
@@ -206,6 +233,7 @@
     </div>
 
     <script>
+        // Инициализация переменных при загрузке страницы
         let currentDisplay = '0';
         let previousDisplay = '';
         let operation = null;
@@ -214,6 +242,7 @@
         const currentElement = document.getElementById('current');
         const previousElement = document.getElementById('previous');
 
+        // Функция обновления дисплея
         function updateDisplay() {
             currentElement.textContent = currentDisplay;
             if (operation) {
@@ -317,23 +346,54 @@
         }
 
         function toggleSign() {
-            currentDisplay = (parseFloat(currentDisplay) * -1).toString();
+            const num = parseFloat(currentDisplay);
+            if (!isNaN(num)) {
+                currentDisplay = (num * -1).toString();
+            }
         }
 
         function percentage() {
-            currentDisplay = (parseFloat(currentDisplay) / 100).toString();
+            const num = parseFloat(currentDisplay);
+            if (!isNaN(num)) {
+                currentDisplay = (num / 100).toString();
+            }
         }
 
-        // Обработчики кнопок
-        document.querySelectorAll('[data-number]').forEach(button => {
-            button.addEventListener('click', () => {
-                appendNumber(button.getAttribute('data-number'));
-                updateDisplay();
+        // Обработчики событий для кнопок
+        function initCalculator() {
+            // Обработчики для цифровых кнопок
+            document.querySelectorAll('[data-number]').forEach(button => {
+                button.addEventListener('click', handleButtonClick);
+                button.addEventListener('touchstart', handleTouchStart);
+                button.addEventListener('touchend', handleTouchEnd);
             });
-        });
 
-        document.querySelectorAll('[data-action]').forEach(button => {
-            button.addEventListener('click', () => {
+            // Обработчики для функциональных кнопок
+            document.querySelectorAll('[data-action]').forEach(button => {
+                button.addEventListener('click', handleButtonClick);
+                button.addEventListener('touchstart', handleTouchStart);
+                button.addEventListener('touchend', handleTouchEnd);
+            });
+
+            // Поддержка клавиатуры
+            document.addEventListener('keydown', handleKeyDown);
+
+            // Инициализация дисплея
+            updateDisplay();
+        }
+
+        // Обработчик клика
+        function handleButtonClick(e) {
+            e.preventDefault();
+            const button = e.currentTarget;
+
+            // Добавляем визуальную обратную связь
+            button.classList.add('active');
+            setTimeout(() => button.classList.remove('active'), 150);
+
+            if (button.hasAttribute('data-number')) {
+                appendNumber(button.getAttribute('data-number'));
+            } else if (button.hasAttribute('data-action')) {
                 const action = button.getAttribute('data-action');
 
                 switch(action) {
@@ -359,13 +419,30 @@
                         chooseOperation(action);
                         break;
                 }
+            }
 
-                updateDisplay();
-            });
-        });
+            updateDisplay();
+        }
 
-        // Поддержка клавиатуры
-        document.addEventListener('keydown', event => {
+        // Обработчик касания (начало)
+        function handleTouchStart(e) {
+            e.preventDefault();
+            const button = e.currentTarget;
+            button.classList.add('active');
+        }
+
+        // Обработчик касания (конец)
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            const button = e.currentTarget;
+            button.classList.remove('active');
+
+            // Вызываем обработчик клика
+            handleButtonClick(e);
+        }
+
+        // Обработчик клавиатуры
+        function handleKeyDown(event) {
             const key = event.key;
 
             // Цифры
@@ -392,6 +469,7 @@
 
             // Enter или = для вычисления
             if (key === 'Enter' || key === '=') {
+                event.preventDefault();
                 calculate();
                 updateDisplay();
             }
@@ -419,21 +497,20 @@
                 percentage();
                 updateDisplay();
             }
-        });
+        }
 
-        // Улучшенная обработка касаний для мобильных
-        document.querySelectorAll('.btn').forEach(btn => {
-            btn.addEventListener('touchstart', function(e) {
-                e.preventDefault();
-                this.style.background = '#eee';
-            }, {passive: false});
+        // Инициализация калькулятора при загрузке страницы
+        document.addEventListener('DOMContentLoaded', initCalculator);
 
-            btn.addEventListener('touchend', function() {
-                this.style.background = '';
-            });
-        });
+        // Альтернативная инициализация для мобильных устройств
+        window.addEventListener('load', initCalculator);
 
-        updateDisplay();
+        // Еще одна попытка инициализации
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initCalculator);
+        } else {
+            initCalculator();
+        }
     </script>
 </body>
 </html>
