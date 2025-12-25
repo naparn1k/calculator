@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мобильный калькулятор</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        .calculator {
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .display {
+            padding: 25px 20px;
+            background: #222;
+            text-align: right;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        .previous {
+            color: #aaa;
+            font-size: 20px;
+            min-height: 24px;
+            overflow: hidden;
+            word-break: break-all;
+        }
+
+        .current {
+            color: white;
+            font-size: 48px;
+            font-weight: 300;
+            margin-top: 5px;
+            overflow: hidden;
+            word-break: break-all;
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: #ddd;
+        }
+
+        .btn {
+            border: none;
+            padding: 20px;
+            font-size: 24px;
+            background: white;
+            cursor: pointer;
+            outline: none;
+            transition: background 0.1s;
+            user-select: none;
+        }
+
+        .btn:active {
+            background: #f5f5f5;
+        }
+
+        .operator {
+            background: #f9f9f9;
+            color: #ff9500;
+        }
+
+        .operator:active {
+            background: #f0f0f0;
+        }
+
+        .equals {
+            background: #ff9500;
+            color: white;
+        }
+
+        .equals:active {
+            background: #e68a00;
+        }
+
+        .clear {
+            color: #ff3b30;
+        }
+
+        .zero {
+            grid-column: span 2;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 480px) {
+            .calculator {
+                max-width: 100%;
+                border-radius: 0;
+            }
+
+            .display {
+                min-height: 100px;
+                padding: 20px 15px;
+            }
+
+            .current {
+                font-size: 40px;
+            }
+
+            .btn {
+                padding: 22px 10px;
+                font-size: 22px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .current {
+                font-size: 36px;
+            }
+
+            .btn {
+                padding: 20px 8px;
+                font-size: 20px;
+            }
+        }
+
+        /* Ландшафтная ориентация */
+        @media (orientation: landscape) and (max-height: 500px) {
+            body {
+                padding: 5px;
+            }
+
+            .calculator {
+                display: flex;
+                max-width: 100%;
+                height: 96vh;
+            }
+
+            .display {
+                width: 60%;
+                min-height: auto;
+            }
+
+            .buttons {
+                width: 40%;
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .zero {
+                grid-column: span 1;
+            }
+
+            .equals {
+                grid-column: span 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <div class="display">
+            <div class="previous" id="previous"></div>
+            <div class="current" id="current">0</div>
+        </div>
+
+        <div class="buttons">
+            <button class="btn clear" data-action="clear">C</button>
+            <button class="btn" data-action="plusminus">±</button>
+            <button class="btn" data-action="percent">%</button>
+            <button class="btn operator" data-action="divide">÷</button>
+
+            <button class="btn" data-number="7">7</button>
+            <button class="btn" data-number="8">8</button>
+            <button class="btn" data-number="9">9</button>
+            <button class="btn operator" data-action="multiply">×</button>
+
+            <button class="btn" data-number="4">4</button>
+            <button class="btn" data-number="5">5</button>
+            <button class="btn" data-number="6">6</button>
+            <button class="btn operator" data-action="subtract">−</button>
+
+            <button class="btn" data-number="1">1</button>
+            <button class="btn" data-number="2">2</button>
+            <button class="btn" data-number="3">3</button>
+            <button class="btn operator" data-action="add">+</button>
+
+            <button class="btn zero" data-number="0">0</button>
+            <button class="btn" data-action="decimal">.</button>
+            <button class="btn equals" data-action="equals">=</button>
+        </div>
+    </div>
+
+    <script>
+        let currentDisplay = '0';
+        let previousDisplay = '';
+        let operation = null;
+        let resetScreen = false;
+
+        const currentElement = document.getElementById('current');
+        const previousElement = document.getElementById('previous');
+
+        function updateDisplay() {
+            currentElement.textContent = currentDisplay;
+            if (operation) {
+                previousElement.textContent = `${previousDisplay} ${getOperatorSymbol(operation)}`;
+            } else {
+                previousElement.textContent = previousDisplay;
+            }
+        }
+
+        function getOperatorSymbol(op) {
+            switch(op) {
+                case 'add': return '+';
+                case 'subtract': return '−';
+                case 'multiply': return '×';
+                case 'divide': return '÷';
+                default: return '';
+            }
+        }
+
+        function appendNumber(number) {
+            if (currentDisplay === '0' || resetScreen) {
+                currentDisplay = number;
+                resetScreen = false;
+            } else {
+                currentDisplay += number;
+            }
+        }
+
+        function addDecimal() {
+            if (resetScreen) {
+                currentDisplay = '0.';
+                resetScreen = false;
+                return;
+            }
+
+            if (!currentDisplay.includes('.')) {
+                currentDisplay += '.';
+            }
+        }
+
+        function clear() {
+            currentDisplay = '0';
+            previousDisplay = '';
+            operation = null;
+        }
+
+        function deleteLast() {
+            if (currentDisplay.length > 1) {
+                currentDisplay = currentDisplay.slice(0, -1);
+            } else {
+                currentDisplay = '0';
+            }
+        }
+
+        function chooseOperation(op) {
+            if (currentDisplay === '') return;
+
+            if (previousDisplay !== '') {
+                calculate();
+            }
+
+            operation = op;
+            previousDisplay = currentDisplay;
+            resetScreen = true;
+        }
+
+        function calculate() {
+            let result;
+            const prev = parseFloat(previousDisplay);
+            const current = parseFloat(currentDisplay);
+
+            if (isNaN(prev) || isNaN(current)) return;
+
+            switch(operation) {
+                case 'add':
+                    result = prev + current;
+                    break;
+                case 'subtract':
+                    result = prev - current;
+                    break;
+                case 'multiply':
+                    result = prev * current;
+                    break;
+                case 'divide':
+                    if (current === 0) {
+                        alert("Ошибка: деление на ноль!");
+                        clear();
+                        updateDisplay();
+                        return;
+                    }
+                    result = prev / current;
+                    break;
+                default:
+                    return;
+            }
+
+            currentDisplay = result.toString();
+            operation = null;
+            previousDisplay = '';
+            resetScreen = true;
+        }
+
+        function toggleSign() {
+            currentDisplay = (parseFloat(currentDisplay) * -1).toString();
+        }
+
+        function percentage() {
+            currentDisplay = (parseFloat(currentDisplay) / 100).toString();
+        }
+
+        // Обработчики кнопок
+        document.querySelectorAll('[data-number]').forEach(button => {
+            button.addEventListener('click', () => {
+                appendNumber(button.getAttribute('data-number'));
+                updateDisplay();
+            });
+        });
+
+        document.querySelectorAll('[data-action]').forEach(button => {
+            button.addEventListener('click', () => {
+                const action = button.getAttribute('data-action');
+
+                switch(action) {
+                    case 'clear':
+                        clear();
+                        break;
+                    case 'plusminus':
+                        toggleSign();
+                        break;
+                    case 'percent':
+                        percentage();
+                        break;
+                    case 'decimal':
+                        addDecimal();
+                        break;
+                    case 'equals':
+                        calculate();
+                        break;
+                    case 'add':
+                    case 'subtract':
+                    case 'multiply':
+                    case 'divide':
+                        chooseOperation(action);
+                        break;
+                }
+
+                updateDisplay();
+            });
+        });
+
+        // Поддержка клавиатуры
+        document.addEventListener('keydown', event => {
+            const key = event.key;
+
+            // Цифры
+            if (key >= '0' && key <= '9') {
+                appendNumber(key);
+                updateDisplay();
+            }
+
+            // Операции
+            if (key === '+' || key === '-') {
+                chooseOperation(key === '+' ? 'add' : 'subtract');
+                updateDisplay();
+            }
+
+            if (key === '*' || key === 'x') {
+                chooseOperation('multiply');
+                updateDisplay();
+            }
+
+            if (key === '/') {
+                chooseOperation('divide');
+                updateDisplay();
+            }
+
+            // Enter или = для вычисления
+            if (key === 'Enter' || key === '=') {
+                calculate();
+                updateDisplay();
+            }
+
+            // Escape для очистки
+            if (key === 'Escape') {
+                clear();
+                updateDisplay();
+            }
+
+            // Backspace для удаления
+            if (key === 'Backspace') {
+                deleteLast();
+                updateDisplay();
+            }
+
+            // Точка для десятичных
+            if (key === '.' || key === ',') {
+                addDecimal();
+                updateDisplay();
+            }
+
+            // % для процента
+            if (key === '%') {
+                percentage();
+                updateDisplay();
+            }
+        });
+
+        // Улучшенная обработка касаний для мобильных
+        document.querySelectorAll('.btn').forEach(btn => {
+            btn.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                this.style.background = '#eee';
+            }, {passive: false});
+
+            btn.addEventListener('touchend', function() {
+                this.style.background = '';
+            });
+        });
+
+        updateDisplay();
+    </script>
+</body>
+</html>
